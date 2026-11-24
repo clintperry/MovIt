@@ -1,10 +1,8 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Diagnostics;
-using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Win32;
 using MovIt.Models;
 using MovIt.Services;
 
@@ -18,10 +16,16 @@ public sealed partial class MainViewModel : ObservableObject
         ".mts", ".m2ts", ".ts", ".vob", ".3gp", ".3g2", ".ogv", ".dv", ".mxf", ".divx", ".rm", ".rmvb", ".mov",
     ];
 
+    /// <summary>Windows and macOS file systems are case-insensitive by default; Linux's is not.</summary>
+    private static readonly StringComparison PathComparison =
+        OperatingSystem.IsWindows() || OperatingSystem.IsMacOS() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+
+    private readonly IPlatformService _platform;
     private CancellationTokenSource? _cts;
 
-    public MainViewModel()
+    public MainViewModel(IPlatformService platform)
     {
+        _platform = platform;
         Items.CollectionChanged += OnItemsChanged;
         RefreshFFmpegState();
     }
@@ -56,10 +60,20 @@ public sealed partial class MainViewModel : ObservableObject
     public partial bool IsInstallingFFmpeg { get; set; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsFFmpegInstallIndeterminate))]
     public partial double? FFmpegInstallProgress { get; set; }
+
+    public bool IsFFmpegInstallIndeterminate => FFmpegInstallProgress is null;
 
     [ObservableProperty]
     public partial string StatusText { get; set; } = string.Empty;
+
+    /// <summary>True where MovIt can download FFmpeg itself; otherwise the banner shows install instructions.</summary>
+    public bool CanAutoInstallFFmpeg => FFmpegInstaller.IsSupported;
+
+    public string FFmpegBannerText => FFmpegInstaller.IsSupported
+        ? "MovIt uses the free FFmpeg engine to convert video. It's about 100 MB and is installed just for MovIt."
+        : "MovIt uses the free FFmpeg engine to convert video. " + FFmpegInstaller.ManualInstallHint;
 
     public bool IsIdle => !IsBusy;
 
@@ -81,18 +95,10 @@ public sealed partial class MainViewModel : ObservableObject
     // ---------- Adding files ----------
 
     [RelayCommand(CanExecute = nameof(IsIdle))]
-    private void AddFiles()
+    private async Task AddFilesAsync()
     {
-        var patterns = string.Join(';', VideoExtensions.Select(e => "*" + e));
-        var dialog = new OpenFileDialog
-        {
-            Title = "Choose videos to convert",
-            Multiselect = true,
-            Filter = $"Video files|{patterns}|All files|*.*",
-        };
-
-        if (dialog.ShowDialog() == true)
-            AddPaths(dialog.FileNames);
+        var paths = await _platform.PickVideosAsync(VideoExtensions);
+        AddPaths(paths);
     }
 
     /// <summary>Adds files (and video files inside dropped folders), skipping duplicates.</summary>
@@ -102,7 +108,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         foreach (var path in paths.SelectMany(ExpandPath))
         {
-            if (Items.Any(i => string.Equals(i.SourcePath, path, StringComparison.OrdinalIgnoreCase)))
+            if (Items.Any(i => string.Equals(i.SourcePath, path, PathComparison)))
                 continue;
             Items.Add(new ConversionItemViewModel(path));
         }
@@ -136,13 +142,10 @@ public sealed partial class MainViewModel : ObservableObject
     // ---------- Output folder ----------
 
     [RelayCommand(CanExecute = nameof(IsIdle))]
-    private void ChooseOutputFolder()
+    private async Task ChooseOutputFolderAsync()
     {
-        var dialog = new OpenFolderDialog { Title = "Save converted videos to…" };
-        if (OutputFolder is not null) dialog.InitialDirectory = OutputFolder;
-
-        if (dialog.ShowDialog() == true)
-            OutputFolder = dialog.FolderName;
+        if (await _platform.PickFolderAsync(OutputFolder) is { } folder)
+            OutputFolder = folder;
     }
 
     [RelayCommand]
@@ -263,7 +266,7 @@ public sealed partial class MainViewModel : ObservableObject
         var baseName = Path.GetFileNameWithoutExtension(source);
         var candidate = Path.Combine(folder, baseName + ".mov");
 
-        for (var n = 1; File.Exists(candidate) || string.Equals(candidate, source, StringComparison.OrdinalIgnoreCase); n++)
+        for (var n = 1; File.Exists(candidate) || string.Equals(candidate, source, PathComparison); n++)
             candidate = Path.Combine(folder, $"{baseName} ({n}).mov");
 
         return candidate;
@@ -288,18 +291,26 @@ public sealed partial class MainViewModel : ObservableObject
     // ---------- Opening results ----------
 
     [RelayCommand]
-    private static void OpenOutput(ConversionItemViewModel? item)
+    private async Task OpenOutputAsync(ConversionItemViewModel? item)
     {
         if (item?.OutputPath is { } path && File.Exists(path))
-            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
+            await TryLaunchAsync(() => _platform.RevealAsync(path));
     }
 
     [RelayCommand]
-    private static void Play(ConversionItemViewModel? item)
+    private async Task PlayAsync(ConversionItemViewModel? item)
     {
         if (item?.OutputPath is { } path && File.Exists(path))
-            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            await TryLaunchAsync(() => _platform.PlayAsync(path));
     }
+
+    private async Task TryLaunchAsync(Func<Task> launch)
+    {
+        try { await launch(); }
+        catch (Exception ex) { ReportError($"Couldn't open the file: {ex.Message}"); }
+    }
+
+    public void ReportError(string message) => StatusText = message;
 
     // ---------- FFmpeg setup ----------
 
@@ -331,6 +342,9 @@ public sealed partial class MainViewModel : ObservableObject
 
         if (error is not null) StatusText = error;
     }
+
+    [RelayCommand]
+    private void RecheckFFmpeg() => RefreshFFmpegState();
 
     private void RefreshFFmpegState()
     {

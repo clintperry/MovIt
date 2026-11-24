@@ -1,0 +1,53 @@
+<Application x:Class="MovIt.App"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             RequestedThemeVariant="Default">
+    <Application.Styles>
+        <FluentTheme />
+    </Application.Styles>
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="CardBackgroundBrush">#FFFFFF</SolidColorBrush>
+                    <SolidColorBrush x:Key="CardStrokeBrush">#1A000000</SolidColorBrush>
+                    <SolidColorBrush x:Key="SecondaryTextBrush">#99000000</SolidColorBrush>
+                    <SolidColorBrush x:Key="DropZoneStrokeBrush">#66000000</SolidColorBrush>
+                    <SolidColorBrush x:Key="SuccessBrush">#0F7B0F</SolidColorBrush>
+                    <SolidColorBrush x:Key="CriticalBrush">#C42B1C</SolidColorBrush>
+                    <SolidColorBrush x:Key="CautionBrush">#9D5D00</SolidColorBrush>
+                    <SolidColorBrush x:Key="CautionBackgroundBrush">#FFF4CE</SolidColorBrush>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="CardBackgroundBrush">#2B2B2B</SolidColorBrush>
+                    <SolidColorBrush x:Key="CardStrokeBrush">#1AFFFFFF</SolidColorBrush>
+                    <SolidColorBrush x:Key="SecondaryTextBrush">#C5FFFFFF</SolidColorBrush>
+                    <SolidColorBrush x:Key="DropZoneStrokeBrush">#8BFFFFFF</SolidColorBrush>
+                    <SolidColorBrush x:Key="SuccessBrush">#6CCB5F</SolidColorBrush>
+                    <SolidColorBrush x:Key="CriticalBrush">#FF99A4</SolidColorBrush>
+                    <SolidColorBrush x:Key="CautionBrush">#FCE100</SolidColorBrush>
+                    <SolidColorBrush x:Key="CautionBackgroundBrush">#433519</SolidColorBrush>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+
+            <LinearGradientBrush x:Key="BrandBrush" StartPoint="0%,0%" EndPoint="100%,100%">
+                <GradientStop Color="#5C46FF" Offset="0" />
+                <GradientStop Color="#FF547C" Offset="1" />
+            </LinearGradientBrush>
+
+            <!-- Icons (Material Design Icons, 24x24, Apache-2.0) – used with <PathIcon Data="{StaticResource ...}"/> -->
+            <StreamGeometry x:Key="IconAdd">M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z</StreamGeometry>
+            <StreamGeometry x:Key="IconClose">M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z</StreamGeometry>
+            <StreamGeometry x:Key="IconPlay">M8,5.14V19.14L19,12.14L8,5.14Z</StreamGeometry>
+            <StreamGeometry x:Key="IconFolder">M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z</StreamGeometry>
+            <StreamGeometry x:Key="IconCheck">M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z</StreamGeometry>
+            <StreamGeometry x:Key="IconClock">M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z</StreamGeometry>
+            <StreamGeometry x:Key="IconError">M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z</StreamGeometry>
+            <StreamGeometry x:Key="IconCancel">M12,2C17.5,2 22,6.5 22,12S17.5,22 12,22 2,17.5 2,12 6.5,2 12,2M12,4C10.1,4 8.4,4.6 7.1,5.7L18.3,16.9C19.3,15.5 20,13.8 20,12C20,7.6 16.4,4 12,4M16.9,18.3L5.7,7.1C4.6,8.4 4,10.1 4,12C4,16.4 7.6,20 12,20C13.9,20 15.6,19.4 16.9,18.3Z</StreamGeometry>
+            <StreamGeometry x:Key="IconSync">M12,18A6,6 0 0,1 6,12C6,11 6.25,10.03 6.7,9.2L5.24,7.74C4.46,8.97 4,10.43 4,12A8,8 0 0,0 12,20V23L16,19L12,15M12,4V1L8,5L12,9V6A6,6 0 0,1 18,12C18,13 17.75,13.97 17.3,14.8L18.76,16.26C19.54,15.03 20,13.57 20,12A8,8 0 0,0 12,4Z</StreamGeometry>
+            <StreamGeometry x:Key="IconDropDown">M2,12H4V17H20V12H22V17C22,18.11 21.11,19 20,19H4C2.9,19 2,18.11 2,17V12M12,15L17.55,9.54L16.13,8.13L13,11.25V2H11V11.25L7.87,8.13L6.45,9.54L12,15Z</StreamGeometry>
+            <StreamGeometry x:Key="IconWarning">M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z</StreamGeometry>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

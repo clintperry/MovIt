@@ -1,0 +1,234 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:MovIt.ViewModels"
+        xmlns:models="clr-namespace:MovIt.Models"
+        mc:Ignorable="d"
+        x:Class="MovIt.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="MovIt"
+        Icon="/Assets/MovIt.png"
+        Width="920" Height="700" MinWidth="700" MinHeight="520"
+        WindowStartupLocation="CenterScreen"
+        DragDrop.AllowDrop="True">
+
+    <Window.Styles>
+        <Style Selector="Button.icon">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="4,0,0,0" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+
+        <Style Selector="TextBlock.caption">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.caption.failed">
+            <Setter Property="Foreground" Value="{DynamicResource CriticalBrush}" />
+        </Style>
+
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+        </Style>
+
+        <Style Selector="ListBoxItem">
+            <Setter Property="Padding" Value="12,10" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        </Style>
+    </Window.Styles>
+
+    <Grid Margin="24,20,24,20" RowDefinitions="Auto,Auto,*,Auto,Auto">
+
+        <!-- ===== Header ===== -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,16" LastChildFill="True">
+            <Image DockPanel.Dock="Left" Source="/Assets/MovIt.png" Width="44" Height="44" />
+            <Button DockPanel.Dock="Right" VerticalAlignment="Center" Command="{Binding AddFilesCommand}"
+                    ToolTip.Tip="Add videos (or drag them onto the window)">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <PathIcon Data="{StaticResource IconAdd}" Width="14" Height="14" />
+                    <TextBlock Text="Add videos" VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+            <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                <TextBlock Text="MovIt" FontSize="26" FontWeight="SemiBold" />
+                <TextBlock Text="Convert any video to a QuickTime .mov file" Classes="caption" FontSize="13" />
+            </StackPanel>
+        </DockPanel>
+
+        <!-- ===== FFmpeg missing banner ===== -->
+        <Border Grid.Row="1" Margin="0,0,0,12" Padding="16,12" CornerRadius="8"
+                IsVisible="{Binding !IsFFmpegAvailable}"
+                Background="{DynamicResource CautionBackgroundBrush}"
+                BorderBrush="{DynamicResource CardStrokeBrush}" BorderThickness="1">
+            <DockPanel>
+                <PathIcon DockPanel.Dock="Left" Data="{StaticResource IconWarning}" Width="20" Height="20"
+                          Margin="0,0,12,0" VerticalAlignment="Center"
+                          Foreground="{DynamicResource CautionBrush}" />
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button Content="Download FFmpeg" Classes="accent"
+                            IsVisible="{Binding CanAutoInstallFFmpeg}"
+                            Command="{Binding InstallFFmpegCommand}" />
+                    <Button Content="Check again" Classes="accent"
+                            IsVisible="{Binding !CanAutoInstallFFmpeg}"
+                            Command="{Binding RecheckFFmpegCommand}" />
+                </StackPanel>
+                <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock FontWeight="SemiBold" Text="FFmpeg is required" />
+                    <TextBlock Classes="caption" TextWrapping="Wrap" Text="{Binding FFmpegBannerText}" />
+                    <ProgressBar Margin="0,8,0,0" Height="4" Minimum="0" Maximum="1"
+                                 IsVisible="{Binding IsInstallingFFmpeg}"
+                                 IsIndeterminate="{Binding IsFFmpegInstallIndeterminate}"
+                                 Value="{Binding FFmpegInstallProgress, TargetNullValue=0}" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- ===== Queue / drop zone ===== -->
+        <Grid Grid.Row="2">
+            <!-- Empty state -->
+            <Panel IsVisible="{Binding !HasItems}">
+                <Rectangle RadiusX="12" RadiusY="12" StrokeThickness="2"
+                           StrokeDashArray="5,4" Stroke="{DynamicResource DropZoneStrokeBrush}"
+                           Fill="{DynamicResource CardBackgroundBrush}" />
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <PathIcon Data="{StaticResource IconDropDown}" Width="52" Height="52"
+                              HorizontalAlignment="Center" Foreground="#7A5CFF" />
+                    <TextBlock HorizontalAlignment="Center" Margin="0,14,0,4" FontSize="18" FontWeight="SemiBold"
+                               Text="Drop videos or folders here" />
+                    <TextBlock HorizontalAlignment="Center" Classes="caption"
+                               Text="MP4, MKV, AVI, WMV, WebM, MPEG, MTS and more" />
+                    <Button HorizontalAlignment="Center" Margin="0,18,0,0" Content="Browse…"
+                            Classes="accent" Command="{Binding AddFilesCommand}" />
+                </StackPanel>
+            </Panel>
+
+            <!-- Queue -->
+            <Border Classes="card" Padding="4" IsVisible="{Binding HasItems}">
+                <ListBox x:Name="Queue" ItemsSource="{Binding Items}" BorderThickness="0" Background="Transparent"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ConversionItemViewModel">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <Panel Grid.Column="0" Width="28" Height="20" VerticalAlignment="Center">
+                                    <PathIcon Data="{StaticResource IconClock}" Width="18" Height="18"
+                                              IsVisible="{Binding IsQueued}"
+                                              Foreground="{DynamicResource SecondaryTextBrush}" />
+                                    <PathIcon Data="{StaticResource IconSync}" Width="18" Height="18"
+                                              IsVisible="{Binding IsActive}"
+                                              Foreground="#7A5CFF" />
+                                    <PathIcon Data="{StaticResource IconCheck}" Width="18" Height="18"
+                                              IsVisible="{Binding IsDone}"
+                                              Foreground="{DynamicResource SuccessBrush}" />
+                                    <PathIcon Data="{StaticResource IconError}" Width="18" Height="18"
+                                              IsVisible="{Binding IsFailed}"
+                                              Foreground="{DynamicResource CriticalBrush}" />
+                                    <PathIcon Data="{StaticResource IconCancel}" Width="18" Height="18"
+                                              IsVisible="{Binding IsCancelled}"
+                                              Foreground="{DynamicResource SecondaryTextBrush}" />
+                                </Panel>
+
+                                <StackPanel Grid.Column="1" Margin="8,0,12,0" VerticalAlignment="Center">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Right" Text="{Binding SizeText}" Classes="caption"
+                                                   Margin="12,0,0,0" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                                   ToolTip.Tip="{Binding SourcePath}" />
+                                    </DockPanel>
+                                    <ProgressBar Margin="0,6,0,4" Height="4" Minimum="0" Maximum="1"
+                                                 Value="{Binding Progress, Mode=OneWay}"
+                                                 IsIndeterminate="{Binding IsIndeterminate}"
+                                                 IsVisible="{Binding IsActive}" />
+                                    <TextBlock Text="{Binding Message}" Classes="caption" Classes.failed="{Binding IsFailed}"
+                                               TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Message}" Margin="0,2,0,0" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Classes="icon" ToolTip.Tip="Play" IsVisible="{Binding CanOpen}"
+                                            Command="{Binding #Queue.((vm:MainViewModel)DataContext).PlayCommand}"
+                                            CommandParameter="{Binding}">
+                                        <PathIcon Data="{StaticResource IconPlay}" Width="14" Height="14" />
+                                    </Button>
+                                    <Button Classes="icon" ToolTip.Tip="Show in folder" IsVisible="{Binding CanOpen}"
+                                            Command="{Binding #Queue.((vm:MainViewModel)DataContext).OpenOutputCommand}"
+                                            CommandParameter="{Binding}">
+                                        <PathIcon Data="{StaticResource IconFolder}" Width="14" Height="14" />
+                                    </Button>
+                                    <Button Classes="icon" ToolTip.Tip="Remove from list" IsEnabled="{Binding !IsActive}"
+                                            Command="{Binding #Queue.((vm:MainViewModel)DataContext).RemoveCommand}"
+                                            CommandParameter="{Binding}">
+                                        <PathIcon Data="{StaticResource IconClose}" Width="12" Height="12" />
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Border>
+
+            <!-- Drag-over highlight -->
+            <Border x:Name="DropOverlay" CornerRadius="12" BorderThickness="2" IsHitTestVisible="False" IsVisible="False"
+                    BorderBrush="{StaticResource BrandBrush}" Background="#1A5C46FF">
+                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="20" FontWeight="SemiBold"
+                           Text="Drop to add" />
+            </Border>
+        </Grid>
+
+        <!-- ===== Options ===== -->
+        <Border Grid.Row="3" Classes="card" Margin="0,16,0,0" Padding="16,14">
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Quality" VerticalAlignment="Center" Margin="0,0,16,0" />
+                <StackPanel Grid.Row="0" Grid.Column="1">
+                    <ComboBox ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}"
+                              MinWidth="300" HorizontalAlignment="Left" IsEnabled="{Binding IsIdle}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="models:ConversionPreset">
+                                <TextBlock Text="{Binding Name}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBlock Text="{Binding SelectedPreset.Description}" Classes="caption"
+                               TextWrapping="Wrap" Margin="0,6,0,0" />
+                </StackPanel>
+
+                <CheckBox Grid.Row="1" Grid.Column="1" Margin="0,10,0,0" IsChecked="{Binding Deinterlace}"
+                          IsEnabled="{Binding IsIdle}"
+                          Content="Deinterlace (recommended for VHS and camcorder captures)"
+                          ToolTip.Tip="Removes the comb-like lines on motion in interlaced video. Always re-encodes." />
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Save to" VerticalAlignment="Center" Margin="0,12,16,0" />
+                <DockPanel Grid.Row="2" Grid.Column="1" Margin="0,12,0,0">
+                    <Button DockPanel.Dock="Right" Content="Change…" Command="{Binding ChooseOutputFolderCommand}" Margin="8,0,0,0" />
+                    <Button DockPanel.Dock="Right" Content="Reset" Command="{Binding ResetOutputFolderCommand}" Margin="8,0,0,0"
+                            IsEnabled="{Binding IsIdle}" IsVisible="{Binding HasCustomOutputFolder}" />
+                    <TextBlock Text="{Binding OutputFolderText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                               ToolTip.Tip="{Binding OutputFolderText}" />
+                </DockPanel>
+            </Grid>
+        </Border>
+
+        <!-- ===== Actions ===== -->
+        <DockPanel Grid.Row="4" Margin="0,16,0,0">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+                <Button Content="Clear list" Command="{Binding ClearCommand}" IsVisible="{Binding HasItems}" />
+                <Button Content="Cancel" Command="{Binding CancelCommand}" IsVisible="{Binding IsBusy}" />
+                <Button Command="{Binding ConvertCommand}" Classes="accent" Padding="20,8" MinWidth="150"
+                        HorizontalContentAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <PathIcon Data="{StaticResource IconPlay}" Width="12" Height="12" />
+                        <TextBlock Text="Convert to .mov" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+            <TextBlock Text="{Binding StatusText}" Classes="caption" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis" />
+        </DockPanel>
+    </Grid>
+</Window>
