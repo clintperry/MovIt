@@ -1,4 +1,3 @@
-using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using MovIt.Models;
 
@@ -15,7 +14,7 @@ public sealed partial class ConversionItemViewModel(string sourcePath) : Observa
     public string SizeText { get; } = FormatSize(sourcePath);
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsActive), nameof(IsFinished), nameof(StatusGlyph), nameof(CanOpen))]
+    [NotifyPropertyChangedFor(nameof(IsActive), nameof(IsFinished), nameof(IsQueued), nameof(IsDone), nameof(IsFailed), nameof(IsCancelled), nameof(CanOpen))]
     public partial ConversionStatus Status { get; set; } = ConversionStatus.Queued;
 
     [ObservableProperty]
@@ -37,16 +36,13 @@ public sealed partial class ConversionItemViewModel(string sourcePath) : Observa
 
     public bool CanOpen => Status == ConversionStatus.Done && OutputPath is not null;
 
-    /// <summary>Segoe Fluent Icons glyph for the current status.</summary>
-    public string StatusGlyph => Status switch
-    {
-        ConversionStatus.Queued => "",     // Recent / clock
-        ConversionStatus.Converting => "", // Sync
-        ConversionStatus.Done => "",       // CheckMark
-        ConversionStatus.Failed => "",     // Error
-        ConversionStatus.Cancelled => "",  // Cancel
-        _ => string.Empty,
-    };
+    public bool IsQueued => Status == ConversionStatus.Queued;
+
+    public bool IsDone => Status == ConversionStatus.Done;
+
+    public bool IsFailed => Status == ConversionStatus.Failed;
+
+    public bool IsCancelled => Status == ConversionStatus.Cancelled;
 
     public void Reset()
     {

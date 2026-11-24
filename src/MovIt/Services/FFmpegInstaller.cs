@@ -1,12 +1,23 @@
-using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
 
 namespace MovIt.Services;
 
-/// <summary>Downloads a static Windows build of FFmpeg into MovIt's private tools folder.</summary>
+/// <summary>
+/// Downloads a static Windows build of FFmpeg into MovIt's private tools folder.
+/// On macOS and Linux FFmpeg comes from the system package manager instead; see <see cref="ManualInstallHint"/>.
+/// </summary>
 public sealed class FFmpegInstaller
 {
+    /// <summary>True where MovIt can download FFmpeg itself (Windows only).</summary>
+    public static bool IsSupported => OperatingSystem.IsWindows();
+
+    /// <summary>What to tell the user on platforms where we don't download FFmpeg.</summary>
+    public static string ManualInstallHint =>
+        OperatingSystem.IsMacOS() ? "Install it with Homebrew:  brew install ffmpeg"
+        : OperatingSystem.IsLinux() ? "Install it with your package manager, e.g.  sudo apt install ffmpeg  /  sudo dnf install ffmpeg"
+        : "Install FFmpeg and make sure it is on your PATH.";
+
     private static readonly string[] DownloadUrls =
     [
         "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip",
@@ -18,6 +29,9 @@ public sealed class FFmpegInstaller
     /// <param name="progress">Receives 0–1 while downloading, then null while extracting.</param>
     public async Task InstallAsync(IProgress<double?> progress, CancellationToken ct)
     {
+        if (!IsSupported)
+            throw new PlatformNotSupportedException(ManualInstallHint);
+
         var tempZip = Path.Combine(Path.GetTempPath(), $"movit-ffmpeg-{Guid.NewGuid():N}.zip");
         var tempDir = Path.Combine(Path.GetTempPath(), $"movit-ffmpeg-{Guid.NewGuid():N}");
         Exception? lastError = null;
